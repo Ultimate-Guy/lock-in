@@ -167,13 +167,25 @@ function wireEvents() {
 
 function initTabs() {
   document.querySelectorAll('.tab-pill').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab-pill').forEach((button) => button.classList.remove('active'));
-      document.querySelectorAll('.section-panel').forEach((section) => section.hidden = true);
-      tab.classList.add('active');
-      document.querySelector(`.section-panel[data-section="${tab.dataset.section}"]`).hidden = false;
-    });
+    tab.addEventListener('click', () => showSection(tab.dataset.section));
   });
+  // wire side nav items
+  document.querySelectorAll('.side-item').forEach((item) => {
+    item.addEventListener('click', () => showSection(item.dataset.section));
+  });
+}
+
+function showSection(section) {
+  // hide all panels
+  document.querySelectorAll('.section-panel').forEach((s) => s.hidden = true);
+  // show requested
+  const panel = document.querySelector(`.section-panel[data-section="${section}"]`);
+  if (panel) panel.hidden = false;
+
+  // update top tabs active state
+  document.querySelectorAll('.tab-pill').forEach((t) => t.classList.toggle('active', t.dataset.section === section));
+  // update side nav active state
+  document.querySelectorAll('.side-item').forEach((s) => s.classList.toggle('active', s.dataset.section === section));
 }
 
 function createRoomList() {
@@ -600,6 +612,7 @@ function applySettings() {
   document.getElementById('studyVariant').value = studyVariant;
   toggleTheme(darkTheme);
   toggleStudyMode(studyMode);
+  maybeShowCloakOverlay();
 }
 
 function initCloakOverlay() {
@@ -607,7 +620,7 @@ function initCloakOverlay() {
   const launchButton = document.getElementById('launchAppBtn');
   if (!overlay || !launchButton) return;
   launchButton.addEventListener('click', () => {
-    overlay.style.display = 'none';
+    overlay.classList.add('hidden');
     if (studyMode && studyVariant === 'disguise') {
       const browserUrl = document.getElementById('browserUrl').value.trim() || 'about:blank';
       loadBrowserURL(browserUrl);
@@ -623,6 +636,14 @@ function detectTeacherView() {
   if (isTeacher || isIframe) {
     closeSessionForTeacher();
   }
+}
+
+// Expose a friendly initializer to show the overlay when studyMode is enabled
+function maybeShowCloakOverlay() {
+  const overlay = document.getElementById('cloakOverlay');
+  if (!overlay) return;
+  if (studyMode) overlay.classList.remove('hidden');
+  else overlay.classList.add('hidden');
 }
 
 function closeSessionForTeacher() {

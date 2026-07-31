@@ -20,12 +20,24 @@
       </div>
     </header>
 
-    <nav class="main-tabs" role="tablist">
-      <button class="tab-pill active" data-section="chat">Chat</button>
-      <button class="tab-pill" data-section="browser">Browser</button>
-      <button class="tab-pill" data-section="games">Games</button>
-      <button class="tab-pill" data-section="profiles">Profiles</button>
-    </nav>
+    <div class="top-and-side">
+      <nav class="side-nav" aria-label="Main">
+        <button class="side-item active" data-section="chat">Home</button>
+        <button class="side-item" data-section="games">Games</button>
+        <button class="side-item" data-section="favorites">Favorites</button>
+        <button class="side-item" data-section="unblockers">Unblockers</button>
+        <button class="side-item" data-section="profiles">Profile</button>
+        <button class="side-item" data-section="communications">Communications</button>
+        <button class="side-item" data-section="terminal">Terminal</button>
+      </nav>
+
+      <nav class="main-tabs" role="tablist">
+        <button class="tab-pill active" data-section="chat">Chat</button>
+        <button class="tab-pill" data-section="browser">Browser</button>
+        <button class="tab-pill" data-section="games">Games</button>
+        <button class="tab-pill" data-section="profiles">Profiles</button>
+      </nav>
+    </div>
 
     <main class="layout-grid">
       <section class="panel panel-chat section-panel" data-section="chat">
@@ -106,6 +118,30 @@
         <div class="game-cards" id="gameCards"></div>
       </section>
 
+      <section class="panel panel-unblockers section-panel" data-section="unblockers" hidden>
+        <div class="panel-header">
+          <div>
+            <h2>Unblockers & Proxe</h2>
+            <p class="panel-note">Alternative environments and unblockers.</p>
+          </div>
+        </div>
+        <div class="panel-body">
+          <p class="panel-note">Available environments and quick deploy links will appear here.</p>
+        </div>
+      </section>
+
+      <section class="panel panel-terminal section-panel" data-section="terminal" hidden>
+        <div class="panel-header">
+          <div>
+            <h2>Terminal</h2>
+            <p class="panel-note">A lightweight terminal placeholder for demos.</p>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div style="min-height:320px;background:rgba(0,0,0,0.6);border-radius:12px;padding:12px;color:#9fb3d7;">Terminal placeholder — WebAssembly / shell demos go here.</div>
+        </div>
+      </section>
+
       <section class="panel panel-right section-panel" data-section="profiles" hidden>
         <div class="panel-header">
           <div>
@@ -168,7 +204,7 @@
         </div>
       </section>
     </main>
-  <div id="cloakOverlay" class="cloak-overlay">
+  <div id="cloakOverlay" class="cloak-overlay hidden">
     <div class="cloak-card">
       <header class="cloak-header">
         <div class="cloak-logo">StudyHub</div>

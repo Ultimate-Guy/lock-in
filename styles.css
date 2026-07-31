@@ -38,6 +38,28 @@ button, input {
   border-radius: 24px;
   backdrop-filter: blur(10px);
 }
+.top-and-side { display: flex; gap: 12px; align-items: center; }
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 140px;
+  margin-right: 12px;
+}
+.side-item {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.03);
+  color: #dfe8ff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.side-item.active {
+  background: linear-gradient(90deg,#6b14ff,#d53bff);
+  color: white;
+  transform: translateY(-1px);
+}
 .main-tabs {
   display: flex;
   gap: 10px;
