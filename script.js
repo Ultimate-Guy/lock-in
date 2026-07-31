@@ -118,6 +118,45 @@ let studyMode = false;
 let studyVariant = 'disguise';
 let darkTheme = true;
 let editingProfile = null;
+let replyDraft = null;
+
+function saveState() {
+  try {
+    const state = { users, rooms, dmThreads, currentUserId: currentUser && currentUser.id };
+    localStorage.setItem('lockin_state', JSON.stringify(state));
+  } catch (e) {
+    // ignore
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('lockin_state');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed.users) {
+      // merge users by id
+      parsed.users.forEach((u) => {
+        const existing = users.find((x) => x.id === u.id);
+        if (existing) Object.assign(existing, u);
+        else users.push(u);
+      });
+    }
+    if (parsed.rooms) {
+      // replace rooms entirely
+      rooms.length = 0; parsed.rooms.forEach((r) => rooms.push(r));
+    }
+    if (parsed.dmThreads) {
+      Object.keys(parsed.dmThreads).forEach((k) => dmThreads[k] = parsed.dmThreads[k]);
+    }
+    if (parsed.currentUserId) {
+      const found = users.find((u) => u.id === parsed.currentUserId);
+      if (found) currentUser = found;
+    }
+  } catch (e) {
+    // ignore
+  }
+}
 
 const escapeHTML = (text) => String(text)
   .replace(/&/g, '&amp;')
@@ -128,6 +167,7 @@ const escapeHTML = (text) => String(text)
   .replace(/'/g, '&#039;');
 
 function initApp() {
+  loadState();
   createRoomList();
   createDMList();
   createProfileCards();
@@ -139,6 +179,29 @@ function initApp() {
   initTabs();
   initCloakOverlay();
   detectTeacherView();
+  // ensure an initial section is visible and nav states are correct
+  showSection('chat');
+  initWelcomeModal();
+}
+
+function initWelcomeModal() {
+  try {
+    const modal = document.getElementById('welcomeModal');
+    const enterBtn = document.getElementById('enterSiteBtn');
+    if (!modal || !enterBtn) return;
+    const seen = localStorage.getItem('lockin_seen_welcome');
+    if (seen === '1') {
+      modal.classList.add('hidden');
+      return;
+    }
+    modal.classList.remove('hidden');
+    enterBtn.addEventListener('click', () => {
+      modal.classList.add('hidden');
+      localStorage.setItem('lockin_seen_welcome', '1');
+    });
+  } catch (e) {
+    // fail silently
+  }
 }
 
 function wireEvents() {
@@ -194,17 +257,30 @@ function createRoomList() {
   rooms.forEach((room) => {
     const roomItem = document.createElement('div');
     roomItem.className = 'room-item';
+    const unreadHtml = room.unread ? `<span class="unread-badge">${room.unread}</span>` : '';
     roomItem.innerHTML = `
       <div>
-        <strong>${room.name}</strong>
+        <strong>${escapeHTML(room.name)} ${unreadHtml}</strong>
         <div class="panel-note">${room.messages.length} messages</div>
       </div>
       <button type="button">Open</button>
     `;
     roomItem.querySelector('button').addEventListener('click', () => {
+      room.unread = 0;
       currentRoom = room.id;
       currentDM = null;
+      saveState();
       renderChat();
+      createRoomList();
+    });
+    roomItem.addEventListener('click', (e) => {
+      if (e.target.tagName.toLowerCase() === 'button') return;
+      room.unread = 0;
+      currentRoom = room.id;
+      currentDM = null;
+      saveState();
+      renderChat();
+      createRoomList();
     });
     roomList.appendChild(roomItem);
   });
@@ -224,6 +300,11 @@ function createDMList() {
       <button type="button">DM</button>
     `;
     dmItem.querySelector('button').addEventListener('click', () => {
+      currentDM = user.name;
+      renderChat();
+    });
+    dmItem.addEventListener('click', (e) => {
+      if (e.target.tagName.toLowerCase() === 'button') return;
       currentDM = user.name;
       renderChat();
     });
@@ -271,6 +352,11 @@ function createProfileCards() {
     }
 
     profileCards.appendChild(card);
+    // clicking the card (not buttons) opens the profile for quick edit/view
+    card.addEventListener('click', (e) => {
+      if (e.target.tagName.toLowerCase() === 'button') return;
+      showProfileForm(user);
+    });
   });
   document.getElementById('sessionUser').textContent = currentUser.name;
   document.getElementById('currentRole').textContent = currentUser.role;
@@ -287,6 +373,7 @@ function switchProfile(user) {
   createRoomList();
   renderChat();
   updateChatTools();
+  saveState();
 }
 
 function showProfileForm(user = null) {
@@ -335,6 +422,7 @@ function saveProfile() {
 
   hideProfileForm();
   createProfileCards();
+  saveState();
 }
 
 function openProfileByName(name) {
@@ -345,7 +433,9 @@ function openProfileByName(name) {
 function createGameCards() {
   const cards = document.getElementById('gameCards');
   cards.innerHTML = '';
+  const query = (document.getElementById('gameSearch')?.value || '').toLowerCase();
   games.forEach((game) => {
+    if (query && !((game.title || '').toLowerCase().includes(query) || (game.desc || '').toLowerCase().includes(query))) return;
     const card = document.createElement('div');
     card.className = 'game-card';
     const imageBlock = game.image ? `<div class="game-cover" style="background-image:url('${escapeHTML(game.image)}')"></div>` : '';
@@ -361,6 +451,13 @@ function createGameCards() {
     cards.appendChild(card);
   });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const gs = document.getElementById('gameSearch');
+  if (gs) {
+    gs.addEventListener('input', () => createGameCards());
+  }
+});
 
 function renderChat() {
   const chatMessages = document.getElementById('chatMessages');
@@ -387,20 +484,63 @@ function renderChat() {
 
 function renderMessage(message, index) {
   const item = document.createElement('div');
-  item.className = 'message';
-  const actions = (currentUser.role === 'Owner' || currentUser.role === 'Mod') ? `<button class="message-action" data-index="${index}">Delete</button>` : '';
-  item.innerHTML = `
-    <div class="message-meta">
-      <strong class="message-author" data-author="${escapeHTML(message.author)}">${escapeHTML(message.author)}</strong>
-      <span class="meta">${escapeHTML(message.role)} · ${escapeHTML(message.time)}</span>
-      ${actions}
-    </div>
-    <span>${escapeHTML(message.text)}</span>
+  const isMe = message.author === currentUser.name;
+  item.className = `message ${isMe ? 'me' : 'them'}`;
+  const canModerate = (currentUser.role === 'Owner' || currentUser.role === 'Mod');
+  const isAuthor = message.author === currentUser.name;
+  const reactions = message.reactions || { like: 0 };
+  const actionsHtml = `
+    <button class="message-reply" data-index="${index}">Reply</button>
+    <button class="reaction-btn" data-index="${index}">♥ <span class="reaction-count">${reactions.like}</span></button>
+    ${isAuthor ? `<button class="message-edit" data-index="${index}">Edit</button>` : ''}
+    ${canModerate ? `<button class="message-action" data-index="${index}">Delete</button>` : ''}
   `;
+
+  item.innerHTML = `
+    <div class="message-row">
+      <div class="message-avatar">${escapeHTML((message.author||'').charAt(0))}</div>
+      <div class="message-body">
+        <div class="message-meta">
+          <strong class="message-author" data-author="${escapeHTML(message.author)}">${escapeHTML(message.author)}</strong>
+          <span class="meta">${escapeHTML(message.role)} · ${escapeHTML(message.time)}</span>
+          <span class="message-actions">${actionsHtml}</span>
+        </div>
+        <div class="message-text">${escapeHTML(message.text)}</div>
+      </div>
+    </div>
+  `;
+
   item.querySelector('.message-author')?.addEventListener('click', () => openProfileByName(message.author));
-  if (actions) {
-    item.querySelector('.message-action').addEventListener('click', () => deleteChatMessage(index));
-  }
+  // Reply
+  item.querySelector('.message-reply')?.addEventListener('click', () => {
+    const input = document.getElementById('chatInput');
+    input.value = `@${message.author} `;
+    input.focus();
+  });
+  // Reaction
+  item.querySelector('.reaction-btn')?.addEventListener('click', (e) => {
+    const arr = currentDM ? (dmThreads[currentDM] || []) : (rooms.find((r) => r.id === currentRoom) || { messages: [] }).messages;
+    const idx = Number(e.currentTarget.dataset.index);
+    const msg = arr[idx];
+    if (!msg.reactions) msg.reactions = { like: 0 };
+    msg.reactions.like = (msg.reactions.like || 0) + 1;
+    saveState();
+    renderChat();
+  });
+  // Edit
+  item.querySelector('.message-edit')?.addEventListener('click', (e) => {
+    const arr = currentDM ? (dmThreads[currentDM] || []) : (rooms.find((r) => r.id === currentRoom) || { messages: [] }).messages;
+    const idx = Number(e.currentTarget.dataset.index);
+    const msg = arr[idx];
+    const newText = prompt('Edit message', msg.text);
+    if (newText !== null) {
+      msg.text = newText;
+      saveState();
+      renderChat();
+    }
+  });
+  // Delete (moderation)
+  item.querySelector('.message-action')?.addEventListener('click', () => deleteChatMessage(index));
   return item;
 }
 
@@ -425,6 +565,7 @@ function sendMessage() {
   }
 
   input.value = '';
+  saveState();
   renderChat();
 }
 
@@ -437,6 +578,7 @@ function deleteChatMessage(index) {
     const room = rooms.find((entry) => entry.id === currentRoom) || rooms[0];
     if (room.messages[index]) room.messages.splice(index, 1);
   }
+  saveState();
   renderChat();
 }
 
@@ -452,6 +594,7 @@ function promptRoleChange(user) {
   createProfileCards();
   createDMList();
   createRoomList();
+  saveState();
 }
 
 function updateChatTools() {
@@ -472,13 +615,14 @@ function updateChatTools() {
 function createNewRoom() {
   const name = prompt('New room name');
   if (!name) return;
-  const id = name.toLowerCase().replace(/\s+/g, '-');
+  const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   if (rooms.some((room) => room.id === id)) {
     alert('Room already exists.');
     return;
   }
-  rooms.push({ id, name, messages: [{ author: currentUser.name, role: currentUser.role, text: 'Room created.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }] });
+  rooms.push({ id, name, messages: [{ author: currentUser.name, role: currentUser.role, text: 'Room created.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }], unread: 0 });
   createRoomList();
+  saveState();
 }
 
 function loadBrowserURL(value) {
