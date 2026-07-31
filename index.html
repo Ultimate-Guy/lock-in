@@ -112,9 +112,30 @@
             <h2>Profiles & Settings</h2>
             <p class="panel-note">Switch users, assign roles, and configure study mode.</p>
           </div>
+          <button id="newProfileBtn" class="secondary-pill">+ Profile</button>
         </div>
 
         <div class="profile-list" id="profileCards"></div>
+
+        <div id="profileFormCard" class="profile-form-card hidden">
+          <div class="profile-form-header">
+            <div>
+              <div class="settings-title" id="profileFormTitle">Add New Profile</div>
+              <div class="panel-note">Create or edit a profile with name, role, picture, bio, and description.</div>
+            </div>
+            <div class="profile-form-actions">
+              <button id="saveProfileBtn" class="primary-pill">Save</button>
+              <button id="cancelProfileBtn" class="secondary-pill">Cancel</button>
+            </div>
+          </div>
+          <div class="profile-form-grid">
+            <label class="form-row"><span>Name</span><input id="profileName" class="profile-input" placeholder="Student or nickname" /></label>
+            <label class="form-row"><span>Role</span><select id="profileRole" class="profile-input"><option>Guest</option><option>Member</option><option>Mod</option><option>Owner</option></select></label>
+            <label class="form-row"><span>Picture URL</span><input id="profilePicture" class="profile-input" placeholder="Optional avatar image URL" /></label>
+            <label class="form-row"><span>Bio</span><input id="profileBio" class="profile-input" placeholder="Short profile bio" /></label>
+            <label class="form-row full-row"><span>Description</span><textarea id="profileDescription" class="profile-input" rows="3" placeholder="Longer profile description"></textarea></label>
+          </div>
+        </div>
 
         <div class="settings-card">
           <div class="settings-title">Settings</div>
